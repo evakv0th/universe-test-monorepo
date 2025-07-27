@@ -1,0 +1,241 @@
+services:
+  gateway:
+    build:
+      context: .
+      dockerfile: ./apps/gateway/Dockerfile
+    container_name: gateway
+    ports:
+      - '3000:3000'
+    environment:
+      - NATS_URL=${NATS_URL:-nats://nats:4222}
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: ${GATEWAY_COMMAND:-npm run start:prod}
+    networks: 
+      - monitoring
+      - app-network
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "3000"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      nats:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+        
+
+
+  publisher:
+    image: andriiuni/events:latest
+    container_name: publisher
+    ports:
+      - '8080:8080'
+    environment:
+      - EVENT_ENDPOINT=http://gateway:3000/events
+      - NATS_URL=${NATS_URL:-nats://nats:4222}
+    networks:
+      - app-network
+    depends_on:
+      gateway:
+        condition: service_started
+    
+
+  fb-collector:
+    build:
+      context: .
+      dockerfile: apps/fb-collector/Dockerfile
+    container_name: fb-collector
+    command: ${GATEWAY_COMMAND:-npm run start:prod} -- fb-collector
+    ports:
+      - "3005:3005"
+    restart: always
+    networks:
+      - app-network
+      - monitoring
+    environment:
+      - NATS_URL=${NATS_URL:-nats://nats:4222}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://test:test@postgres:5432/test}
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - prisma-client:/app/node_modules/.prisma
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "3005"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      gateway:
+        condition: service_started
+      nats:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+
+  ttk-collector:
+    build:
+      context: .
+      dockerfile: apps/ttk-collector/Dockerfile
+    container_name: ttk-collector
+    command: ${GATEWAY_COMMAND:-npm run start:prod} -- ttk-collector
+    restart: always
+    ports:
+      - "3006:3006"
+    networks:
+      - app-network
+      - monitoring
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - prisma-client:/app/node_modules/.prisma
+    environment:
+      - NATS_URL=${NATS_URL:-nats://nats:4222}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://test:test@postgres:5432/test}
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "3006"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      gateway:
+        condition: service_started
+      nats:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      
+  reporter:
+    build:
+      context: .
+      dockerfile: apps/reporter/Dockerfile
+    container_name: reporter
+    command: ${GATEWAY_COMMAND:-npm run start:prod} -- reporter
+    ports:
+      - '3007:3007'
+    networks:
+      - app-network
+      - monitoring
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - prisma-client:/app/node_modules/.prisma
+    environment:
+      - NATS_URL=${NATS_URL:-nats://nats:4222}
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "3007"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      gateway:
+        condition: service_started
+      nats:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:13.5
+    restart: always
+    environment:  
+      - POSTGRES_HOST_AUTH_METHOD=trust
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - app-network
+  
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    ports:
+      - '9090:9090'
+    networks:
+      - monitoring
+    depends_on:
+      gateway:
+        condition: service_started
+
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.migrate 
+    command: npx prisma migrate deploy
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgresql://test:test@postgres:5432/test}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - prisma-client:/app/node_modules/.prisma
+    networks:
+      - app-network
+
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - 3001:3000
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    networks:
+      - monitoring
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - prometheus
+  
+  nats:
+    image: nats:latest
+    ports:
+      - "4222:4222"   
+      - "8222:8222"  
+    command: ["-js", "-m", "8222"] 
+    volumes:
+      - nats_data:/data
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "8222"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    networks:
+      - monitoring
+      - app-network
+
+volumes:
+  grafana-storage:
+  postgres:
+  nats_data:
+  prisma-client:
+
+networks:
+  app-network:
+    driver: bridge
+  monitoring:
+    driver: bridge

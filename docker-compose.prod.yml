@@ -1,0 +1,60 @@
+# docker-compose.prod.yml
+services:
+  gateway:
+    command: npm run start:prod
+    ports:
+      - "80:3000"
+    volumes:
+      - /app/node_modules
+    environment:
+      - NODE_ENV=production
+
+  fb-collector:
+    command: npm run start:prod -- fb-collector
+    ports:
+      - "3005:3005"
+    volumes:
+      - /app/node_modules
+    environment:
+      - NODE_ENV=production
+
+  ttk-collector:
+    command: npm run start:prod -- ttk-collector
+    ports:
+      - "3006:3006"
+    volumes:
+      - /app/node_modules
+    environment:
+      - NODE_ENV=production
+
+  reporter:
+    command: npm run start:prod -- reporter
+    ports:
+      - "3007:3007"
+    volumes:
+      - /app/node_modules
+    environment:
+      - NODE_ENV=production
+
+  publisher:
+    ports:
+      - "8080:8080"
+
+  prometheus:
+    ports:
+      - "9090:9090"
+
+  grafana:
+    ports:
+      - "3001:3000"
+
+  postgres:
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  nats:
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    restart: unless-stopped

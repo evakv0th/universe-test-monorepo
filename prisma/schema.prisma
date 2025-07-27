@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Event {
+  id            String   @id @default(uuid())
+  timestamp     DateTime
+  source        String 
+  funnelStage   String 
+  eventType     String
+  facebookEvent FacebookEvent?
+  tiktokEvent   TiktokEvent?
+
+  @@index([timestamp])
+  @@index([source])
+  @@index([funnelStage])
+  @@index([eventType])
+  @@index([source, timestamp])
+  @@index([timestamp, funnelStage])
+}
+
+model FacebookEvent {
+  id              String   @id @default(uuid())
+  eventId         String   @unique
+  event           Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId          String
+  userName        String
+  userAge         Int
+  userGender      String
+  userCity        String
+  userCountry     String
+  engagementType  String  
+  referrer        String?
+  videoId         String?
+  adId            String? 
+  campaignId      String?
+  clickPosition   String?
+  device          String? 
+  browser         String?
+  purchaseAmount  Int? 
+
+  @@index([engagementType])
+  @@index([campaignId])
+  @@index([purchaseAmount])
+  @@index([engagementType, campaignId])
+  @@index([engagementType, purchaseAmount])
+  @@index([userAge])
+  @@index([userGender])
+  @@index([userCity])
+  @@index([userCountry])
+  @@index([userAge, userGender, userCity, userCountry])
+}
+
+model TiktokEvent {
+  id              String   @id @default(uuid())
+  eventId         String   @unique
+  event           Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId          String
+  username        String
+  followers       Int
+  engagementType  String 
+  watchTime       Int?   
+  percentageWatched Int? 
+  device          String?
+  country         String?
+  videoId         String?
+  actionTime      DateTime?
+  profileId       String? 
+  purchasedItem   String? 
+  purchaseAmount  Int? 
+
+  @@index([engagementType])
+  @@index([purchaseAmount])
+  @@index([engagementType, purchaseAmount])
+
+  @@index([followers])
+  @@index([watchTime])
+  @@index([percentageWatched])
+  @@index([device])
+  @@index([country])
+
+  @@index([followers, watchTime, percentageWatched, device, country])
+}

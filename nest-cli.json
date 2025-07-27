@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json.schemastore.org/nest-cli",
+  "collection": "@nestjs/schematics",
+  "sourceRoot": "apps/gateway/src",
+  "compilerOptions": {
+    "deleteOutDir": true,
+    "webpack": true,
+    "tsConfigPath": "apps/gateway/tsconfig.app.json"
+  },
+  "monorepo": true,
+  "root": "apps/gateway",
+  "projects": {
+    "constants": {
+      "type": "library",
+      "root": "libs/constants",
+      "entryFile": "index",
+      "sourceRoot": "libs/constants/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/constants/tsconfig.lib.json"
+      }
+    },
+    "correlation-id-service": {
+      "type": "library",
+      "root": "libs/correlation-id-service",
+      "entryFile": "index",
+      "sourceRoot": "libs/correlation-id-service/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/correlation-id-service/tsconfig.lib.json"
+      }
+    },
+    "fb-collector": {
+      "type": "application",
+      "root": "apps/fb-collector",
+      "entryFile": "main",
+      "sourceRoot": "apps/fb-collector/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/fb-collector/tsconfig.app.json"
+      }
+    },
+    "gateway": {
+      "type": "application",
+      "root": "apps/gateway",
+      "entryFile": "main",
+      "sourceRoot": "apps/gateway/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/gateway/tsconfig.app.json"
+      }
+    },
+    "nats": {
+      "type": "library",
+      "root": "libs/nats",
+      "entryFile": "index",
+      "sourceRoot": "libs/nats/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/nats/tsconfig.lib.json"
+      }
+    },
+    "prisma": {
+      "type": "library",
+      "root": "libs/prisma",
+      "entryFile": "index",
+      "sourceRoot": "libs/prisma/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/prisma/tsconfig.lib.json"
+      }
+    },
+    "reporter": {
+      "type": "application",
+      "root": "apps/reporter",
+      "entryFile": "main",
+      "sourceRoot": "apps/reporter/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/reporter/tsconfig.app.json"
+      }
+    },
+    "shared-collector": {
+      "type": "library",
+      "root": "libs/shared-collector",
+      "entryFile": "index",
+      "sourceRoot": "libs/shared-collector/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/shared-collector/tsconfig.lib.json"
+      }
+    },
+    "structured-logger-service": {
+      "type": "library",
+      "root": "libs/structured-logger-service",
+      "entryFile": "index",
+      "sourceRoot": "libs/structured-logger-service/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/structured-logger-service/tsconfig.lib.json"
+      }
+    },
+    "ttk-collector": {
+      "type": "application",
+      "root": "apps/ttk-collector",
+      "entryFile": "main",
+      "sourceRoot": "apps/ttk-collector/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/ttk-collector/tsconfig.app.json"
+      }
+    }
+  }
+}
