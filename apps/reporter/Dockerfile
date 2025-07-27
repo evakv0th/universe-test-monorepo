@@ -10,4 +10,3 @@ COPY apps/reporter ./apps/reporter
 WORKDIR /app/apps/reporter
 
 EXPOSE 3007
-CMD ["npm", "run", "start:dev", "--", "reporter"]

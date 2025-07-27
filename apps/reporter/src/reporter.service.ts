@@ -27,8 +27,8 @@ export class ReporterService {
 
     try {
       query = eventStatsQuerySchema.parse(rawQuery);
-    } catch (error) {
-      throw new BadRequestException(error.errors);
+    } catch (err: any) {
+      this.handleZodError(err);
     }
 
     const where = {
@@ -54,8 +54,8 @@ export class ReporterService {
     let query: RevenueStatsQuery;
     try {
       query = revenueStatsQuerySchema.parse(rawQuery);
-    } catch (error) {
-      throw new BadRequestException(error.errors);
+    } catch (err) {
+      this.handleZodError(err);
     }
 
     const timestampFilter = this._getTimestampRange(query.from, query.to);
@@ -69,7 +69,12 @@ export class ReporterService {
   }
 
   async getDemographics(rawQuery: any) {
-    const query: DemographicsQuery = demographicsQuerySchema.parse(rawQuery);
+    let query: DemographicsQuery;
+    try {
+      query = demographicsQuerySchema.parse(rawQuery);
+    } catch (err) {
+      this.handleZodError(err);
+    }
 
     const timestampFilter = this._getTimestampRange(query.from, query.to);
 
@@ -177,5 +182,16 @@ export class ReporterService {
     );
 
     return Object.values(aggregated);
+  }
+
+  private handleZodError(err: any): never {
+    const formattedErrors = err.issues.map((issue) => ({
+      field: issue.path.join("."),
+      message: issue.message,
+    }));
+    throw new BadRequestException({
+      message: "Validation failed",
+      errors: formattedErrors,
+    });
   }
 }

@@ -10,4 +10,3 @@ COPY apps/gateway ./apps/gateway
 WORKDIR /app/apps/gateway
 
 EXPOSE 3000
-CMD ["npm", "run", "start:dev"]
