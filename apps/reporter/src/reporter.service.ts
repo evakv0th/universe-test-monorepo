@@ -168,7 +168,7 @@ export class ReporterService {
           },
         },
       }),
-      avgFollowers: await this.prisma.tiktokEvent.aggregate({
+      totalFollowers: await this.prisma.tiktokEvent.aggregate({
         where: {
           event: {
             timestamp: timestampFilter,
@@ -238,7 +238,7 @@ export class ReporterService {
       const results = await this.prisma.facebookEvent.findMany({
         where: {
           engagementType: "bottom",
-          purchaseAmount: { not: null },
+          purchaseAmount: { gt: 0 },
           ...(campaignId && { campaignId }),
           event: {
             timestamp: timestampFilter,
@@ -250,6 +250,7 @@ export class ReporterService {
             select: {
               eventType: true,
               funnelStage: true,
+              source: true,
             },
           },
         },
@@ -261,7 +262,7 @@ export class ReporterService {
     const results = await this.prisma.tiktokEvent.findMany({
       where: {
         engagementType: "bottom",
-        purchaseAmount: { not: null },
+        purchaseAmount: { gt: 0 },
         event: {
           timestamp: timestampFilter,
           source,
@@ -272,6 +273,7 @@ export class ReporterService {
           select: {
             eventType: true,
             funnelStage: true,
+            source: true,
           },
         },
       },

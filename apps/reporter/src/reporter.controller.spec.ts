@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/unbound-method */
 import { PrismaService } from "@app/prisma";
 import { BadRequestException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
@@ -231,7 +229,7 @@ describe("ReporterService", () => {
       const result = await service.getDemographics(rawQuery);
 
       expect(result.totalUsers).toBe(mockTotalUsers);
-      expect(result.avgFollowers).toEqual(mockFollowers);
+      expect(result.totalFollowers).toEqual(mockFollowers);
       expect(result.countryDistribution).toEqual(mockCountryDist);
       expect(result.deviceDistribution).toEqual(mockDeviceDist);
     });
