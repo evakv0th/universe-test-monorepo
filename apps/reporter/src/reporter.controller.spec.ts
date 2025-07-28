@@ -22,10 +22,14 @@ describe("ReporterService", () => {
             facebookEvent: {
               findMany: jest.fn(),
               groupBy: jest.fn(),
+              count: jest.fn(),
+              aggregate: jest.fn(),
             },
             tiktokEvent: {
               findMany: jest.fn(),
               groupBy: jest.fn(),
+              count: jest.fn(),
+              aggregate: jest.fn(),
             },
           },
         },
@@ -169,34 +173,33 @@ describe("ReporterService", () => {
         source: "facebook",
       };
 
-      const mockResult = [
-        {
-          userAge: 25,
-          userGender: "male",
-          userCity: "London",
-          userCountry: "UK",
-          _count: 10,
-        },
+      const mockTotalUsers = 100;
+      const mockAgeGroups = [{ userAge: 25 }, { userAge: 32 }, { userAge: 25 }];
+      const mockGenderDistribution = [
+        { userGender: "male", _count: { userGender: 70 } },
+        { userGender: "female", _count: { userGender: 30 } },
+      ];
+      const mockCountryDistribution = [
+        { userCountry: "UK", _count: { userCountry: 80 } },
+        { userCountry: "US", _count: { userCountry: 20 } },
       ];
 
-      (prisma.facebookEvent.groupBy as jest.Mock).mockResolvedValue(mockResult);
+      (prisma.facebookEvent.count as jest.Mock).mockResolvedValue(
+        mockTotalUsers,
+      );
+      (prisma.facebookEvent.findMany as jest.Mock).mockResolvedValue(
+        mockAgeGroups,
+      );
+      (prisma.facebookEvent.groupBy as jest.Mock)
+        .mockResolvedValueOnce(mockGenderDistribution)
+        .mockResolvedValueOnce(mockCountryDistribution);
 
       const result = await service.getDemographics(rawQuery);
 
-      expect(result).toEqual(mockResult);
-      expect(prisma.facebookEvent.groupBy).toHaveBeenCalledWith({
-        by: ["userAge", "userGender", "userCity", "userCountry"],
-        where: {
-          event: {
-            timestamp: {
-              gte: new Date("2024-01-01T00:00:00.000Z"),
-              lte: new Date("2024-01-31T23:59:59.999Z"),
-            },
-            source: "facebook",
-          },
-        },
-        _count: true,
-      });
+      expect(result.totalUsers).toBe(mockTotalUsers);
+      expect(result.userGenderDistribution).toEqual(mockGenderDistribution);
+      expect(result.userCountryDistribution).toEqual(mockCountryDistribution);
+      expect(result.avgCountByGroup).toEqual([{ range: "25–34", count: 3 }]);
     });
 
     it("should return tiktok demographics when source is tiktok", async () => {
@@ -206,41 +209,31 @@ describe("ReporterService", () => {
         source: "tiktok",
       };
 
-      const mockResult = [
-        {
-          followers: 1000,
-          watchTime: 120,
-          percentageWatched: 80,
-          device: "android",
-          country: "US",
-          _count: 5,
-        },
+      const mockTotalUsers = 42;
+      const mockFollowers = { _sum: { followers: 42000 } };
+      const mockCountryDist = [
+        { country: "US", _count: { country: 20 } },
+        { country: "UK", _count: { country: 22 } },
+      ];
+      const mockDeviceDist = [
+        { device: "android", _count: { device: 30 } },
+        { device: "ios", _count: { device: 12 } },
       ];
 
-      (prisma.tiktokEvent.groupBy as jest.Mock).mockResolvedValue(mockResult);
+      (prisma.tiktokEvent.count as jest.Mock).mockResolvedValue(mockTotalUsers);
+      (prisma.tiktokEvent.aggregate as jest.Mock).mockResolvedValue(
+        mockFollowers,
+      );
+      (prisma.tiktokEvent.groupBy as jest.Mock)
+        .mockResolvedValueOnce(mockCountryDist)
+        .mockResolvedValueOnce(mockDeviceDist);
 
       const result = await service.getDemographics(rawQuery);
 
-      expect(result).toEqual(mockResult);
-      expect(prisma.tiktokEvent.groupBy).toHaveBeenCalledWith({
-        by: [
-          "followers",
-          "watchTime",
-          "percentageWatched",
-          "device",
-          "country",
-        ],
-        where: {
-          event: {
-            timestamp: {
-              gte: new Date("2024-01-01T00:00:00.000Z"),
-              lte: new Date("2024-01-31T23:59:59.999Z"),
-            },
-            source: "tiktok",
-          },
-        },
-        _count: true,
-      });
+      expect(result.totalUsers).toBe(mockTotalUsers);
+      expect(result.avgFollowers).toEqual(mockFollowers);
+      expect(result.countryDistribution).toEqual(mockCountryDist);
+      expect(result.deviceDistribution).toEqual(mockDeviceDist);
     });
   });
 });

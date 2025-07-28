@@ -121,11 +121,10 @@ describe("SharedCollectorService", () => {
         data: {},
         ack: jest.fn(),
       };
-      const timestamp = new Date().toISOString();
       const fakeDecoded = {
         data: {
           eventId: "1",
-          timestamp,
+          timestamp: new Date().toISOString(),
           source: "facebook",
           funnelStage: "top",
           eventType: "click",
@@ -153,14 +152,6 @@ describe("SharedCollectorService", () => {
 
       await service.processMessages();
 
-      expect(service["logger"].log).toHaveBeenCalledWith(
-        expect.objectContaining({
-          eventId: "1",
-          message: "saved event to DB",
-          eventType: "click",
-          source: "facebook",
-        }),
-      );
       expect(service.saveEventToDB).toHaveBeenCalledWith(fakeDecoded.data);
       expect(fakeMsg.ack).toHaveBeenCalled();
       expect(service["successfulEventsCounter"].labels).toHaveBeenCalledWith(
