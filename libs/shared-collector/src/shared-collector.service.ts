@@ -104,31 +104,42 @@ export class SharedCollectorService
     }
 
     for await (const msg of this.sub) {
-      const decoded = this.jsc.decode(msg.data) as unknown as EventMessage;
+      let decoded: EventMessage;
+      try {
+        decoded = this.jsc.decode(msg.data) as unknown as EventMessage;
+      } catch (decodeError) {
+        this.failedEventsCounter.labels(this.source).inc();
+        this.logger.error(`Failed to process message: ${decodeError.message}`);
+        continue;
+      }
       const event: Event = decoded.data;
       try {
         await this.saveEventToDB(event);
 
-        this.logger.log({
-          message: "saved event to DB",
-          eventId: event.eventId,
-          source: event.source,
-          eventType: event.eventType,
-          timestamp: new Date().toISOString(),
-        });
+        this.logger.log(
+          JSON.stringify({
+            message: "saved event to DB",
+            eventId: event.eventId,
+            source: event.source,
+            eventType: event.eventType,
+            timestamp: new Date().toISOString(),
+          }),
+        );
 
         this.successfulEventsCounter.labels(this.source).inc();
 
         msg.ack();
       } catch (error) {
         this.failedEventsCounter.labels(this.source).inc();
-        this.logger.log({
-          message: `Failed to save event to DB: ${error.message}`,
-          eventId: event.eventId,
-          source: event.source,
-          eventType: event.eventType,
-          timestamp: new Date().toISOString(),
-        });
+        this.logger.log(
+          JSON.stringify({
+            message: `Failed to save event to DB: ${error.message}`,
+            eventId: event.eventId,
+            source: event.source,
+            eventType: event.eventType,
+            timestamp: new Date().toISOString(),
+          }),
+        );
       }
     }
   }

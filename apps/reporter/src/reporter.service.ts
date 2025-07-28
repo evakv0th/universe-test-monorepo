@@ -8,6 +8,7 @@ import {
 } from "@app/constants";
 import { PrismaService } from "@app/prisma";
 import { BadRequestException, Injectable } from "@nestjs/common";
+import { ZodError } from "zod";
 
 type RevenueArray = Array<{
   purchaseAmount: number | null;
@@ -79,28 +80,146 @@ export class ReporterService {
     const timestampFilter = this._getTimestampRange(query.from, query.to);
 
     if (query.source === "facebook") {
-      return await this.prisma.facebookEvent.groupBy({
-        by: ["userAge", "userGender", "userCity", "userCountry"],
+      const totalUsers = await this.prisma.facebookEvent.count({
         where: {
           event: {
             timestamp: timestampFilter,
             source: "facebook",
           },
         },
-        _count: true,
       });
+
+      const rawAges = await this.prisma.facebookEvent.findMany({
+        where: {
+          event: {
+            timestamp: timestampFilter,
+            source: "facebook",
+          },
+        },
+        select: {
+          userAge: true,
+        },
+      });
+
+      const ageGroupsCount: Record<string, number> = {};
+
+      for (const { userAge } of rawAges) {
+        const group = this.getAgeRange(userAge);
+        ageGroupsCount[group] = (ageGroupsCount[group] || 0) + 1;
+      }
+
+      const avgCountByGroup = Object.entries(ageGroupsCount).map(
+        ([range, count]) => ({
+          range,
+          count,
+        }),
+      );
+
+      const userGenderDistribution = await this.prisma.facebookEvent.groupBy({
+        by: ["userGender"],
+        where: {
+          event: {
+            timestamp: timestampFilter,
+            source: "facebook",
+          },
+        },
+        _count: {
+          userGender: true,
+        },
+        orderBy: {
+          _count: {
+            userGender: "desc",
+          },
+        },
+      });
+
+      const userCountryDistribution = await this.prisma.facebookEvent.groupBy({
+        by: ["userCountry"],
+        where: {
+          event: {
+            timestamp: timestampFilter,
+            source: "facebook",
+          },
+        },
+        _count: {
+          userCountry: true,
+        },
+        orderBy: {
+          _count: {
+            userCountry: "desc",
+          },
+        },
+      });
+
+      return {
+        totalUsers,
+        userGenderDistribution,
+        avgCountByGroup,
+        userCountryDistribution,
+      };
     }
 
-    return await this.prisma.tiktokEvent.groupBy({
-      by: ["followers", "watchTime", "percentageWatched", "device", "country"],
-      where: {
-        event: {
-          timestamp: timestampFilter,
-          source: "tiktok",
+    return {
+      totalUsers: await this.prisma.tiktokEvent.count({
+        where: {
+          event: {
+            timestamp: timestampFilter,
+            source: "tiktok",
+          },
         },
-      },
-      _count: true,
-    });
+      }),
+      avgFollowers: await this.prisma.tiktokEvent.aggregate({
+        where: {
+          event: {
+            timestamp: timestampFilter,
+            source: "tiktok",
+          },
+        },
+        _sum: {
+          followers: true,
+        },
+      }),
+      countryDistribution: await this.prisma.tiktokEvent.groupBy({
+        by: ["country"],
+        where: {
+          event: {
+            timestamp: timestampFilter,
+            source: "tiktok",
+          },
+          country: {
+            not: null,
+          },
+        },
+        _count: {
+          country: true,
+        },
+        orderBy: {
+          _count: {
+            country: "desc",
+          },
+        },
+      }),
+      deviceDistribution: await this.prisma.tiktokEvent.groupBy({
+        by: ["device"],
+        where: {
+          event: {
+            timestamp: timestampFilter,
+            source: "tiktok",
+          },
+          device: {
+            not: null,
+          },
+        },
+        _count: {
+          device: true,
+        },
+        orderBy: {
+          _count: {
+            device: "desc",
+          },
+        },
+      }),
+    };
   }
 
   private _getTimestampRange(from: Date, to: Date) {
@@ -185,13 +304,31 @@ export class ReporterService {
   }
 
   private handleZodError(err: any): never {
-    const formattedErrors = err.issues.map((issue) => ({
-      field: issue.path.join("."),
-      message: issue.message,
-    }));
-    throw new BadRequestException({
-      message: "Validation failed",
-      errors: formattedErrors,
-    });
+    if (err instanceof ZodError) {
+      const formattedErrors = err.issues.map((issue) => ({
+        field: issue.path.join("."),
+        message: issue.message,
+      }));
+      throw new BadRequestException({
+        message: "Validation failed",
+        errors: formattedErrors,
+      });
+    } else {
+      throw new BadRequestException({
+        message: "Invalid query parameters",
+        error: err.message,
+      });
+    }
+  }
+
+  private getAgeRange(age: number): string {
+    if (age >= 13 && age <= 17) return "13–17";
+    if (age >= 18 && age <= 24) return "18–24";
+    if (age >= 25 && age <= 34) return "25–34";
+    if (age >= 35 && age <= 44) return "35–44";
+    if (age >= 45 && age <= 54) return "45–54";
+    if (age >= 55 && age <= 64) return "55–64";
+    if (age >= 65) return "65+";
+    return "Unknown";
   }
 }

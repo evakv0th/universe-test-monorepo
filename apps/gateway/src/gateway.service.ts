@@ -63,13 +63,15 @@ export class GatewayService {
       };
 
       await this.natsService.publishJson(eventObject.source, eventObject);
-      this.logger.log({
-        message: "Published event",
-        eventId: eventObject.id,
-        chunkId: eventsChunkId,
-        source: eventObject.source,
-        timestamp: new Date().toISOString(),
-      });
+      this.logger.log(
+        JSON.stringify({
+          message: "Published event",
+          eventId: eventObject.id,
+          chunkId: eventsChunkId,
+          source: eventObject.source,
+          timestamp: new Date().toISOString(),
+        }),
+      );
     }
 
     this.logger.log(

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/unbound-method */
 import { PrismaService } from "@app/prisma";
 import { BadRequestException } from "@nestjs/common";

@@ -6,4 +6,5 @@ async function bootstrap() {
   app.enableShutdownHooks();
   await app.listen(3007);
 }
+// eslint-disable-next-line @typescript-eslint/no-floating-promises
 bootstrap();
