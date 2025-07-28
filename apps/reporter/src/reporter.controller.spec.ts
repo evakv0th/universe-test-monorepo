@@ -78,6 +78,14 @@ describe("ReporterService", () => {
     });
   });
 
+  it("should throw BadRequestException for invalid query", async () => {
+    const rawQuery = { invalid: "data" };
+
+    await expect(service.getEventStats(rawQuery)).rejects.toThrow(
+      BadRequestException,
+    );
+  });
+
   describe("getRevenueStats", () => {
     it("should return aggregated revenue stats for facebook", async () => {
       const rawQuery = {

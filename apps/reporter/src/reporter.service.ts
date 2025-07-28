@@ -42,7 +42,7 @@ export class ReporterService {
       ...(query.eventType && { eventType: query.eventType }),
     };
 
-    return this.prisma.event.groupBy({
+    return await this.prisma.event.groupBy({
       by: ["eventType", "funnelStage", "source"],
       where,
       _count: {
