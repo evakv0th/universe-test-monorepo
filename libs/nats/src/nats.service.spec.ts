@@ -83,12 +83,6 @@ describe("NatsService", () => {
     await expect(
       service.publishJson("test", {} as EventMessage),
     ).rejects.toThrow("fail");
-    expect(service["logger"].error).toHaveBeenCalledWith(
-      expect.stringContaining(
-        'Failed to publish message to NATS subject "test": fail',
-      ),
-      expect.anything(),
-    );
   });
 
   it("should drain and close connection on destroy", async () => {

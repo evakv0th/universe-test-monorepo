@@ -26,7 +26,6 @@ services:
         condition: service_started
       postgres:
         condition: service_healthy
-        
 
 
   publisher:
@@ -42,7 +41,9 @@ services:
     depends_on:
       gateway:
         condition: service_healthy
-    
+    restart: on-failure
+
+
 
   fb-collector:
     build:

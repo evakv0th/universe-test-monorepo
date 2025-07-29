@@ -40,14 +40,16 @@ export class NatsService
     try {
       this.nc = await connect({
         servers: process.env.NATS_URL || "nats://nats:4222",
+        timeout: 5000,
+        reconnect: true,
+        maxReconnectAttempts: 10,
+        reconnectTimeWait: 2000,
+        name: "nats-service",
       });
       this.jsm = await this.nc.jetstreamManager();
       this.js = this.nc.jetstream();
-      await this.jsm.streams.add({ name: "tiktok", subjects: ["tiktok"] });
-      await this.jsm.streams.add({
-        name: "facebook",
-        subjects: ["facebook"],
-      });
+      await this.ensureStreamExists("tiktok", ["tiktok"]);
+      await this.ensureStreamExists("facebook", ["facebook"]);
     } catch (error) {
       this.logger.error(
         `Failed to connect to NATS: ${error.message}`,
@@ -73,7 +75,7 @@ export class NatsService
     return this.jsc;
   }
 
-  async publishJson(subject: string, data: EventMessage) {
+  async publishJson(subject: string, data: EventMessage, timeoutMs = 5000) {
     if (!this.js) {
       this.logger.error(
         "JetStream client not initialized. Call connect() first.",
@@ -81,11 +83,22 @@ export class NatsService
       throw new Error("NATS JetStream not connected.");
     }
     try {
-      await this.js.publish(subject, this.jsc.encode(data));
+      const ack = await Promise.race([
+        this.js.publish(subject, this.jsc.encode(data)),
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error("NATS publish timeout")),
+            timeoutMs,
+          ),
+        ),
+      ]);
+
+      this.logger.log(
+        `Published to "${subject}" (stream: ${ack?.stream}, seq: ${ack?.seq})`,
+      );
     } catch (error) {
       this.logger.error(
-        `Failed to publish message to NATS subject "${subject}": ${error.message}`,
-        error.stack,
+        `Failed to publish message to NATS subject "${subject}": ${JSON.stringify(error)}`,
       );
       throw error;
     }
@@ -106,6 +119,18 @@ export class NatsService
       await this.nc.drain();
       await this.nc.close();
       this.logger.log("NATS connection drained and closed.");
+    }
+  }
+
+  async ensureStreamExists(name: string, subjects: string[]) {
+    try {
+      await this.jsm.streams.info(name);
+      this.logger.log(`Stream "${name}" already exists.`);
+    } catch {
+      this.logger.log(
+        `Creating stream "${name}" with subjects: ${JSON.stringify(subjects)}`,
+      );
+      await this.jsm.streams.add({ name, subjects });
     }
   }
 }

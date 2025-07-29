@@ -63,6 +63,7 @@ export class GatewayService {
       };
 
       await this.natsService.publishJson(eventObject.source, eventObject);
+
       this.logger.log(
         JSON.stringify({
           message: "Published event",
